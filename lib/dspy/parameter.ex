@@ -1,7 +1,7 @@
 defmodule Dspy.Parameter do
   @moduledoc """
   Optimizable parameters for DSPy modules.
-  
+
   Parameters represent components that can be optimized by teleprompters,
   such as prompts, few-shot examples, and model weights.
   """
@@ -10,12 +10,12 @@ defmodule Dspy.Parameter do
 
   @type parameter_type :: :prompt | :examples | :weights | :custom
   @type t :: %__MODULE__{
-    name: String.t(),
-    type: parameter_type(),
-    value: any(),
-    metadata: map(),
-    history: [any()]
-  }
+          name: String.t(),
+          type: parameter_type(),
+          value: any(),
+          metadata: map(),
+          history: [any()]
+        }
 
   @doc """
   Create a new parameter.
@@ -34,10 +34,7 @@ defmodule Dspy.Parameter do
   Update a parameter's value.
   """
   def update(parameter, new_value) do
-    %{parameter | 
-      value: new_value,
-      history: [new_value | parameter.history]
-    }
+    %{parameter | value: new_value, history: [new_value | parameter.history]}
   end
 
   @doc """
@@ -57,6 +54,7 @@ defmodule Dspy.Parameter do
     case parameter.history do
       [_current, previous | rest] ->
         %{parameter | value: previous, history: [previous | rest]}
+
       _ ->
         parameter
     end

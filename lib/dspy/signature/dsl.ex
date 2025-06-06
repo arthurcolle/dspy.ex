@@ -4,6 +4,28 @@ defmodule Dspy.Signature.DSL do
   """
 
   @doc """
+  Define a field for the signature.
+  """
+  defmacro field(name, direction, opts \\ []) do
+    quote do
+      field_spec = %{
+        name: unquote(name),
+        type: :string,
+        description: Keyword.get(unquote(opts), :desc, ""),
+        required: Keyword.get(unquote(opts), :required, true),
+        default: Keyword.get(unquote(opts), :default)
+      }
+      
+      case unquote(direction) do
+        :input ->
+          @input_fields field_spec
+        :output ->
+          @output_fields field_spec
+      end
+    end
+  end
+
+  @doc """
   Define an input field for the signature.
   """
   defmacro input_field(name, type, description \\ "", opts \\ []) do
@@ -66,6 +88,10 @@ defmodule Dspy.Signature.DSL do
           output_fields: unquote(Macro.escape(output_fields)),
           instructions: unquote(instructions)
         )
+      end
+
+      def new do
+        signature()
       end
 
       def input_fields, do: unquote(Macro.escape(input_fields))

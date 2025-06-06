@@ -1,7 +1,7 @@
 defmodule Dspy.Settings do
   @moduledoc """
   Global configuration management for DSPy.
-  
+
   Maintains settings like language model configuration, generation parameters,
   and optimization settings in a GenServer for thread-safe access.
   """
@@ -17,12 +17,12 @@ defmodule Dspy.Settings do
   ]
 
   @type t :: %__MODULE__{
-    lm: Dspy.LM.t() | nil,
-    max_tokens: pos_integer(),
-    temperature: float(),
-    cache: boolean(),
-    experimental: [atom()]
-  }
+          lm: Dspy.LM.t() | nil,
+          max_tokens: pos_integer(),
+          temperature: float(),
+          cache: boolean(),
+          experimental: [atom()]
+        }
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)

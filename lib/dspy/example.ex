@@ -1,7 +1,7 @@
 defmodule Dspy.Example do
   @moduledoc """
   Training examples for DSPy programs.
-  
+
   Examples represent input-output pairs used for few-shot learning,
   optimization, and evaluation. They support flexible attribute access
   and can contain arbitrary fields.
@@ -10,9 +10,9 @@ defmodule Dspy.Example do
   defstruct [:attrs, :metadata]
 
   @type t :: %__MODULE__{
-    attrs: map(),
-    metadata: map()
-  }
+          attrs: map(),
+          metadata: map()
+        }
 
   @doc """
   Create a new Example with the given attributes.
@@ -80,5 +80,4 @@ defmodule Dspy.Example do
 
   defp normalize_attrs(attrs) when is_list(attrs), do: Enum.into(attrs, %{})
   defp normalize_attrs(attrs) when is_map(attrs), do: attrs
-
 end

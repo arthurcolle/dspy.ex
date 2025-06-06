@@ -1,7 +1,7 @@
 defmodule Dspy.Prediction do
   @moduledoc """
   Language model predictions with completion metadata.
-  
+
   Predictions represent the outputs from language model calls,
   including the generated content and metadata about the generation process.
   """
@@ -9,17 +9,17 @@ defmodule Dspy.Prediction do
   defstruct [:attrs, :completions, :metadata]
 
   @type completion :: %{
-    text: String.t(),
-    tokens: pos_integer() | nil,
-    logprobs: map() | nil,
-    finish_reason: String.t() | nil
-  }
+          text: String.t(),
+          tokens: pos_integer() | nil,
+          logprobs: map() | nil,
+          finish_reason: String.t() | nil
+        }
 
   @type t :: %__MODULE__{
-    attrs: map(),
-    completions: [completion()],
-    metadata: map()
-  }
+          attrs: map(),
+          completions: [completion()],
+          metadata: map()
+        }
 
   @doc """
   Create a new Prediction with the given attributes.
@@ -36,6 +36,7 @@ defmodule Dspy.Prediction do
   """
   def new(attrs \\ %{}, completions \\ [], metadata \\ %{}) do
     attrs = normalize_attrs(attrs)
+
     %__MODULE__{
       attrs: attrs,
       completions: completions,
@@ -104,5 +105,4 @@ defmodule Dspy.Prediction do
 
   defp normalize_attrs(attrs) when is_list(attrs), do: Enum.into(attrs, %{})
   defp normalize_attrs(attrs) when is_map(attrs), do: attrs
-
 end

@@ -1,7 +1,7 @@
 defmodule Dspy.Module do
   @moduledoc """
   Behaviour for composable DSPy modules.
-  
+
   Modules are the building blocks of DSPy programs. They define
   forward passes for inference and can contain optimizable parameters.
   """
@@ -75,25 +75,27 @@ defmodule Dspy.Module do
   """
   def parallel(modules) when is_list(modules) do
     fn inputs ->
-      tasks = 
+      tasks =
         modules
         |> Enum.map(fn module ->
           Task.async(fn -> forward(module, inputs) end)
         end)
 
       results = Task.await_many(tasks)
-      
+
       case Enum.find(results, fn
-        {:error, _} -> true
-        _ -> false
-      end) do
-        {:error, reason} -> {:error, reason}
+             {:error, _} -> true
+             _ -> false
+           end) do
+        {:error, reason} ->
+          {:error, reason}
+
         nil ->
-          merged_attrs = 
+          merged_attrs =
             results
             |> Enum.map(fn {:ok, prediction} -> prediction.attrs end)
             |> Enum.reduce(%{}, &Map.merge/2)
-          
+
           {:ok, Dspy.Prediction.new(merged_attrs)}
       end
     end
@@ -103,7 +105,7 @@ defmodule Dspy.Module do
     quote do
       @behaviour Dspy.Module
 
-      def forward(module, inputs), do: {:error, :not_implemented}
+      def forward(_module, _inputs), do: {:error, :not_implemented}
       def parameters(_module), do: []
       def update_parameters(module, _parameters), do: module
 
