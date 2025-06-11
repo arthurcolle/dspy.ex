@@ -357,7 +357,7 @@ defmodule Dspy.EnhancedSignature do
     }
   end
 
-  defp build_chunked_content(fields, examples, inputs, max_length) do
+  defp build_chunked_content(_fields, _examples, _inputs, _max_length) do
     # Implementation for building content within length limits
     content = []
     used_length = 0
@@ -469,7 +469,7 @@ defmodule Dspy.EnhancedSignature do
     end
   end
 
-  defp input_section(signature, inputs \\ %{}) do
+  defp input_section(signature, inputs) do
     input_text =
       signature.input_fields
       |> Enum.map(fn field ->
@@ -524,7 +524,7 @@ defmodule Dspy.EnhancedSignature do
 
   defp vision_examples_section([], _signature), do: nil
 
-  defp vision_examples_section(examples, signature) do
+  defp vision_examples_section(_examples, signature) do
     if signature.vision_enabled do
       "Vision Examples: See the provided image examples that demonstrate the expected input format."
     else

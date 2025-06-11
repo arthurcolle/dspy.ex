@@ -25,7 +25,7 @@ defmodule Dspy.Config.GPT41 do
         Dspy.LM.OpenAI.new(
           api_key: api_key,
           model: "gpt-4.1",
-          timeout: Keyword.get(opts, :timeout, 60_000),
+          timeout: Keyword.get(opts, :timeout, 120_000),
           organization: Keyword.get(opts, :organization)
         )
 
@@ -55,7 +55,7 @@ defmodule Dspy.Config.GPT41 do
         Dspy.LM.OpenAI.new(
           api_key: api_key,
           model: "gpt-4.1-mini",
-          timeout: Keyword.get(opts, :timeout, 30_000),
+          timeout: Keyword.get(opts, :timeout, 90_000),
           organization: Keyword.get(opts, :organization)
         )
 
@@ -85,7 +85,7 @@ defmodule Dspy.Config.GPT41 do
         Dspy.LM.OpenAI.new(
           api_key: api_key,
           model: "gpt-4.1-nano",
-          timeout: Keyword.get(opts, :timeout, 20_000),
+          timeout: Keyword.get(opts, :timeout, 60_000),
           organization: Keyword.get(opts, :organization)
         )
 
@@ -191,7 +191,7 @@ defmodule Dspy.Config.GPT41 do
     Dspy.LM.OpenAI.new(
       api_key: api_key,
       model: model,
-      timeout: Keyword.get(opts, :timeout, 30_000),
+      timeout: Keyword.get(opts, :timeout, 90_000),
       organization: Keyword.get(opts, :organization)
     )
   end

@@ -33,7 +33,8 @@ defmodule Dspy.LM.OpenAI do
     "o3-mini" => %{type: :reasoning, capabilities: [:text, :reasoning]},
     "o1" => %{type: :reasoning, capabilities: [:text, :reasoning]},
     "o1-mini" => %{type: :reasoning, capabilities: [:text, :reasoning], deprecated: true},
-    "o1-pro" => %{type: :reasoning, capabilities: [:text, :reasoning]}
+    "o1-pro" => %{type: :reasoning, capabilities: [:text, :reasoning]},
+    "o1-preview" => %{type: :reasoning, capabilities: [:text, :reasoning]}
   }
 
   # Flagship chat models
@@ -50,6 +51,11 @@ defmodule Dspy.LM.OpenAI do
     "gpt-4.1-nano" => %{type: :chat, capabilities: [:text, :tools]},
     "gpt-4o-mini" => %{type: :chat, capabilities: [:text, :vision, :tools]},
     "gpt-4o-mini-audio-preview" => %{type: :chat, capabilities: [:text, :audio, :tools]}
+  }
+
+  # DeepSeek models
+  @deepseek_models %{
+    "deepseek-r1-0528-qwen3-8b-mlx" => %{type: :chat, capabilities: [:text, :tools, :structured_output]}
   }
 
   # Realtime models
@@ -127,20 +133,23 @@ defmodule Dspy.LM.OpenAI do
                   Map.merge(
                     @cost_optimized_models,
                     Map.merge(
-                      @realtime_models,
+                      @deepseek_models,
                       Map.merge(
-                        @image_models,
+                        @realtime_models,
                         Map.merge(
-                          @tts_models,
+                          @image_models,
                           Map.merge(
-                            @transcription_models,
+                            @tts_models,
                             Map.merge(
-                              @tool_models,
+                              @transcription_models,
                               Map.merge(
-                                @embedding_models,
+                                @tool_models,
                                 Map.merge(
-                                  @moderation_models,
-                                  Map.merge(@legacy_models, @base_models)
+                                  @embedding_models,
+                                  Map.merge(
+                                    @moderation_models,
+                                    Map.merge(@legacy_models, @base_models)
+                                  )
                                 )
                               )
                             )
@@ -185,6 +194,146 @@ defmodule Dspy.LM.OpenAI do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  @doc """
+  Generate with streaming support for GPT-4.1 models.
+  Provides real-time token streaming with aggregation and verification.
+  """
+  def generate_stream(client, request, callback_fn \\ nil) do
+    unless client.model in ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano"] do
+      {:error, :model_not_supported_for_streaming}
+    else
+      body = build_streaming_request_body(client, request)
+      
+      # Use enhanced streaming visualization
+      stream_callback = if callback_fn do
+        callback_fn
+      else
+        Dspy.EnhancedStreamingVisualization.create_enhanced_callback(
+          stream_id: "gpt41_stream_#{System.unique_integer([:positive])}",
+          model: client.model,
+          display_mode: :full,
+          enable_charts: true
+        )
+      end
+      
+      make_streaming_request(client, "/chat/completions", body, stream_callback)
+    end
+  end
+
+  @doc """
+  Generate with token aggregation and chain of thought verification.
+  """
+  def generate_with_verification(client, request, opts \\ []) do
+    enable_streaming = Keyword.get(opts, :streaming, true)
+    enable_aggregation = Keyword.get(opts, :aggregation, true)
+    enable_verification = Keyword.get(opts, :verification, true)
+    
+    if enable_streaming do
+      # Use Agent state to track aggregation and verification
+      agent_pid = spawn(fn -> 
+        stream_state_loop(%{
+          aggregated_tokens: [],
+          verification_steps: [],
+          complete_text: "",
+          enable_aggregation: enable_aggregation,
+          enable_verification: enable_verification
+        })
+      end)
+      
+      callback = fn
+        {:chunk, content} ->
+          send(agent_pid, {:chunk, content})
+          :ok
+        
+        {:done, final_data} ->
+          send(agent_pid, {:finalize, final_data})
+          receive do
+            {:result, result} -> {:ok, result}
+          after 
+            5000 -> {:error, :timeout}
+          end
+        
+        {:error, error} ->
+          send(agent_pid, {:error, error})
+          {:error, error}
+      end
+      
+      generate_stream(client, request, callback)
+    else
+      # Non-streaming fallback
+      case generate(client, request) do
+        {:ok, response} ->
+          content = get_in(response, [:choices, Access.at(0), :message, :content]) || ""
+          verification = if enable_verification, do: verify_complete_reasoning(content), else: nil
+          
+          {:ok, %{
+            complete_text: content,
+            verification_steps: [],
+            final_verification: verification,
+            aggregated_tokens: [content],
+            metadata: response
+          }}
+        
+        error ->
+          error
+      end
+    end
+  end
+
+  defp stream_state_loop(state) do
+    receive do
+      {:chunk, content} ->
+        updated_state = %{state | 
+          aggregated_tokens: [content | state.aggregated_tokens],
+          complete_text: state.complete_text <> content
+        }
+        
+        # Perform verification if enabled
+        updated_state = if state.enable_verification do
+          verification_step = verify_reasoning_step(content)
+          %{updated_state | verification_steps: [verification_step | state.verification_steps]}
+        else
+          updated_state
+        end
+        
+        stream_state_loop(updated_state)
+      
+      {:finalize, final_data} ->
+        # Perform final verification on complete text
+        final_verification = if state.enable_verification do
+          verify_complete_reasoning(state.complete_text)
+        else
+          nil
+        end
+        
+        result = %{
+          complete_text: state.complete_text,
+          verification_steps: Enum.reverse(state.verification_steps),
+          final_verification: final_verification,
+          aggregated_tokens: Enum.reverse(state.aggregated_tokens),
+          metadata: final_data
+        }
+        
+        send(self(), {:result, result})
+      
+      {:error, error} ->
+        send(self(), {:error, error})
+    end
+  end
+
+  defp verify_complete_reasoning(content) do
+    %{
+      content_length: String.length(content),
+      reasoning_quality: assess_step_quality(content),
+      logical_consistency: check_logical_consistency(content),
+      complexity_score: assess_text_complexity(content),
+      reasoning_patterns: detect_reasoning_patterns(content),
+      contradictions: detect_contradictions(content),
+      logical_flow: assess_local_logical_flow(content),
+      timestamp: DateTime.utc_now()
+    }
   end
 
   @impl true
@@ -438,4 +587,375 @@ defmodule Dspy.LM.OpenAI do
         {:error, {:invalid_response, response_body}}
     end
   end
+
+  defp build_streaming_request_body(client, request) do
+    body = build_request_body(client, request)
+    Map.put(body, :stream, true)
+  end
+
+  defp make_streaming_request(client, path, body, callback_fn) do
+    if is_nil(client.api_key) do
+      {:error, :missing_api_key}
+    else
+      base_url = client.base_url || @default_base_url
+      url = String.to_charlist(base_url <> path)
+
+      headers = [
+        {~c"Authorization", String.to_charlist("Bearer #{client.api_key}")},
+        {~c"Content-Type", ~c"application/json; charset=utf-8"},
+        {~c"Accept", ~c"text/event-stream"},
+        {~c"Cache-Control", ~c"no-cache"}
+      ]
+
+      headers =
+        if client.organization do
+          [{~c"OpenAI-Organization", String.to_charlist(client.organization)} | headers]
+        else
+          headers
+        end
+
+      json_body = Jason.encode!(body) |> String.to_charlist()
+
+      :inets.start()
+      :ssl.start()
+
+      request = {url, headers, ~c"application/json", json_body}
+
+      http_options = [
+        {:timeout, client.timeout},
+        {:ssl,
+         [
+           {:verify, :verify_none},
+           {:log_level, :none}
+         ]}
+      ]
+
+      case :httpc.request(:post, request, http_options, []) do
+        {:ok, {{_, 200, _}, _headers, response_body}} ->
+          parse_streaming_response(response_body, callback_fn)
+
+        {:ok, {{_, status, _}, _headers, error_body}} ->
+          error_string = List.to_string(error_body)
+          {:error, {:http_error, status, error_string}}
+
+        {:error, reason} ->
+          {:error, {:request_failed, reason}}
+      end
+    end
+  end
+
+  defp parse_streaming_response(response_body, callback_fn) do
+    response_string = List.to_string(response_body)
+    
+    # Split by SSE event boundaries
+    events = String.split(response_string, "\n\n")
+    
+    final_result = process_streaming_events(events, callback_fn, %{
+      aggregated_content: "",
+      token_count: 0,
+      chunks_processed: 0
+    })
+    
+    case final_result do
+      {:ok, data} ->
+        callback_fn.({:done, data})
+        {:ok, data}
+      
+      {:error, reason} ->
+        callback_fn.({:error, reason})
+        {:error, reason}
+    end
+  end
+
+  defp process_streaming_events([], _callback_fn, accumulator) do
+    {:ok, %{
+      complete_text: accumulator.aggregated_content,
+      token_count: accumulator.token_count,
+      chunks_processed: accumulator.chunks_processed
+    }}
+  end
+
+  defp process_streaming_events([event | rest], callback_fn, accumulator) do
+    case parse_sse_event(event) do
+      {:data, "[DONE]"} ->
+        {:ok, %{
+          complete_text: accumulator.aggregated_content,
+          token_count: accumulator.token_count,
+          chunks_processed: accumulator.chunks_processed
+        }}
+      
+      {:data, json_data} ->
+        case Jason.decode(json_data) do
+          {:ok, %{"choices" => [%{"delta" => %{"content" => content}} | _]}} when is_binary(content) ->
+            # Process the chunk with aggregation
+            new_accumulator = %{
+              aggregated_content: accumulator.aggregated_content <> content,
+              token_count: accumulator.token_count + estimate_token_count(content),
+              chunks_processed: accumulator.chunks_processed + 1
+            }
+            
+            # Send chunk to callback
+            callback_fn.({:chunk, content})
+            
+            # Continue processing
+            process_streaming_events(rest, callback_fn, new_accumulator)
+          
+          {:ok, _} ->
+            # Non-content chunk, continue processing
+            process_streaming_events(rest, callback_fn, accumulator)
+          
+          {:error, _} ->
+            # Invalid JSON, continue processing
+            process_streaming_events(rest, callback_fn, accumulator)
+        end
+      
+      :ignore ->
+        process_streaming_events(rest, callback_fn, accumulator)
+    end
+  end
+
+  defp parse_sse_event(event_string) do
+    lines = String.split(event_string, "\n")
+    
+    Enum.reduce(lines, :ignore, fn line, acc ->
+      case String.trim(line) do
+        "data: " <> data ->
+          {:data, String.trim(data)}
+        
+        "" ->
+          acc
+        
+        _ ->
+          acc
+      end
+    end)
+  end
+
+  defp estimate_token_count(text) do
+    # Rough estimation: 1 token ≈ 4 characters for English text
+    # This is a simplified estimation - real tokenization would be more accurate
+    max(1, div(String.length(text), 4))
+  end
+
+  defp verify_reasoning_step(content) do
+    %{
+      content: content,
+      timestamp: System.monotonic_time(:millisecond),
+      reasoning_indicators: detect_reasoning_patterns(content),
+      step_quality: assess_step_quality(content),
+      logical_consistency: check_logical_consistency(content)
+    }
+  end
+
+
+  defp detect_reasoning_patterns(content) do
+    patterns = [
+      %{pattern: ~r/<think>/, type: :thinking_start, weight: 1.0},
+      %{pattern: ~r/<\/think>/, type: :thinking_end, weight: 1.0},
+      %{pattern: ~r/because|since|therefore|thus|consequently/, type: :causal_reasoning, weight: 0.8},
+      %{pattern: ~r/if.*then|when.*then|assuming/, type: :conditional_reasoning, weight: 0.7},
+      %{pattern: ~r/first|second|third|next|finally/, type: :sequential_reasoning, weight: 0.6},
+      %{pattern: ~r/however|but|although|despite/, type: :contrasting_reasoning, weight: 0.5}
+    ]
+    
+    Enum.filter(patterns, fn %{pattern: pattern} ->
+      String.match?(content, pattern)
+    end)
+  end
+
+  defp assess_step_quality(content) do
+    length_score = min(1.0, String.length(content) / 100.0)
+    complexity_score = assess_text_complexity(content)
+    reasoning_score = if detect_reasoning_patterns(content) != [], do: 0.8, else: 0.2
+    
+    (length_score + complexity_score + reasoning_score) / 3.0
+  end
+
+  defp assess_text_complexity(content) do
+    word_count = content |> String.split() |> length()
+    unique_words = content |> String.split() |> Enum.uniq() |> length()
+    
+    complexity_indicators = [
+      word_count > 10,
+      unique_words / max(1, word_count) > 0.7,
+      String.contains?(content, ["analyze", "consider", "evaluate", "determine"]),
+      String.match?(content, ~r/[.!?]{2,}/)
+    ]
+    
+    Enum.count(complexity_indicators, & &1) / length(complexity_indicators)
+  end
+
+  defp check_logical_consistency(content) do
+    # Basic logical consistency checks
+    contradictions = detect_contradictions(content)
+    logical_flow = assess_local_logical_flow(content)
+    
+    %{
+      contradiction_score: contradictions,
+      local_flow_score: logical_flow,
+      overall_consistency: (1 - contradictions + logical_flow) / 2
+    }
+  end
+
+  defp detect_contradictions(content) do
+    # Simple contradiction detection
+    contradiction_patterns = [
+      {~r/always.*never/, 0.9},
+      {~r/all.*none/, 0.8},
+      {~r/true.*false/, 0.7},
+      {~r/yes.*no/, 0.6}
+    ]
+    
+    max_contradiction = Enum.reduce(contradiction_patterns, 0.0, fn {pattern, weight}, acc ->
+      if String.match?(content, pattern) do
+        max(acc, weight)
+      else
+        acc
+      end
+    end)
+    
+    max_contradiction
+  end
+
+  defp assess_local_logical_flow(content) do
+    sentences = String.split(content, ~r/[.!?]+/)
+    
+    if length(sentences) < 2 do
+      1.0
+    else
+      # Simple assessment based on connecting words and sentence structure
+      connecting_words = ["therefore", "thus", "because", "since", "however", "although"]
+      connections_found = Enum.count(sentences, fn sentence ->
+        Enum.any?(connecting_words, &String.contains?(sentence, &1))
+      end)
+      
+      min(1.0, connections_found / max(1, length(sentences) - 1))
+    end
+  end
+
+  defp _count_reasoning_steps(text) do
+    # Count explicit reasoning steps
+    think_blocks = Regex.scan(~r/<think>.*?<\/think>/s, text) |> length()
+    step_indicators = Regex.scan(~r/(first|second|third|step \d+|next|then|finally)/i, text) |> length()
+    
+    max(think_blocks, step_indicators)
+  end
+
+  defp _assess_logical_flow(text) do
+    sentences = String.split(text, ~r/[.!?]+/)
+    
+    if length(sentences) < 3 do
+      0.5
+    else
+      flow_indicators = [
+        _count_logical_connectors(text),
+        _assess_topic_continuity(sentences),
+        _check_argument_structure(text)
+      ]
+      
+      Enum.sum(flow_indicators) / length(flow_indicators)
+    end
+  end
+
+  defp _assess_completeness(text) do
+    completeness_indicators = [
+      String.contains?(text, ["conclusion", "summary", "therefore", "in conclusion"]),
+      String.length(text) > 200,
+      _count_reasoning_steps(text) >= 2,
+      String.contains?(text, ["because", "since", "due to"])
+    ]
+    
+    Enum.count(completeness_indicators, & &1) / length(completeness_indicators)
+  end
+
+  defp _assess_coherence(text) do
+    coherence_factors = [
+      _assess_vocabulary_consistency(text),
+      _assess_pronoun_referencing(text),
+      _assess_temporal_consistency(text)
+    ]
+    
+    Enum.sum(coherence_factors) / length(coherence_factors)
+  end
+
+  defp _count_logical_connectors(text) do
+    connectors = ["therefore", "thus", "because", "since", "however", "although", "furthermore", "moreover"]
+    connector_count = Enum.count(connectors, &String.contains?(text, &1))
+    min(1.0, connector_count / 3.0)
+  end
+
+  defp _assess_topic_continuity(sentences) do
+    # Simple topic continuity based on shared key terms
+    if length(sentences) < 2 do
+      1.0
+    else
+      word_overlap_scores = for i <- 1..(length(sentences) - 1) do
+        prev_words = sentences |> Enum.at(i - 1) |> String.split() |> MapSet.new()
+        curr_words = sentences |> Enum.at(i) |> String.split() |> MapSet.new()
+        
+        intersection_size = MapSet.intersection(prev_words, curr_words) |> MapSet.size()
+        union_size = MapSet.union(prev_words, curr_words) |> MapSet.size()
+        
+        if union_size > 0, do: intersection_size / union_size, else: 0.0
+      end
+      
+      if length(word_overlap_scores) > 0 do
+        Enum.sum(word_overlap_scores) / length(word_overlap_scores)
+      else
+        0.5
+      end
+    end
+  end
+
+  defp _check_argument_structure(text) do
+    structure_indicators = [
+      String.contains?(text, ["premise", "assumption", "given that"]),
+      String.contains?(text, ["therefore", "thus", "consequently"]),
+      String.contains?(text, ["evidence", "proof", "shows that"])
+    ]
+    
+    Enum.count(structure_indicators, & &1) / length(structure_indicators)
+  end
+
+  defp _assess_vocabulary_consistency(text) do
+    words = text |> String.downcase() |> String.split()
+    unique_words = words |> Enum.uniq()
+    
+    if length(words) > 0 do
+      min(1.0, length(unique_words) / length(words) + 0.3)
+    else
+      0.5
+    end
+  end
+
+  defp _assess_pronoun_referencing(text) do
+    pronouns = ["it", "this", "that", "these", "those", "they", "them"]
+    pronoun_count = Enum.count(pronouns, &String.contains?(text, &1))
+    
+    # Balanced pronoun usage indicates good referencing
+    total_words = text |> String.split() |> length()
+    if total_words > 0 do
+      pronoun_ratio = pronoun_count / total_words
+      1.0 - abs(pronoun_ratio - 0.1) * 5  # Optimal ratio around 10%
+    else
+      0.5
+    end
+  end
+
+  defp _assess_temporal_consistency(text) do
+    past_tense = Regex.scan(~r/\w+ed\b/, text) |> length()
+    present_tense = Regex.scan(~r/\w+(s|es)\b/, text) |> length()
+    future_tense = String.contains?(text, ["will", "shall", "going to"]) |> if(do: 1, else: 0)
+    
+    total_tense_indicators = past_tense + present_tense + future_tense
+    
+    if total_tense_indicators > 0 do
+      # Consistency score based on dominant tense
+      dominant_tense_ratio = max(past_tense, max(present_tense, future_tense)) / total_tense_indicators
+      dominant_tense_ratio
+    else
+      1.0
+    end
+  end
+
 end

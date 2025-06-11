@@ -90,7 +90,23 @@ defmodule Dspy.AdvancedCognitiveSystem do
           }
 
     def new(module, opts \\ []) do
-      instance = apply(module, :new, [Keyword.get(opts, :signature), opts])
+      # Handle signature parameter properly
+      signature = 
+        case Keyword.get(opts, :signature) do
+          nil -> 
+            Dspy.Signature.new("QuantumCognitive", 
+              input_fields: [%{name: :input, type: :string, description: "Input text", required: true, default: nil}],
+              output_fields: [%{name: :output, type: :string, description: "Output text", required: true, default: nil}]
+            )
+          sig when is_binary(sig) ->
+            Dspy.Signature.new("QuantumCognitive", 
+              input_fields: [%{name: :input, type: :string, description: "Input text", required: true, default: nil}],
+              output_fields: [%{name: :output, type: :string, description: "Output text", required: true, default: nil}]
+            )
+          sig -> sig
+        end
+      
+      instance = apply(module, :new, [signature, opts])
 
       %__MODULE__{
         id: generate_quantum_id(),

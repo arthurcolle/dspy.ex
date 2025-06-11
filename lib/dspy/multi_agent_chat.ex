@@ -167,7 +167,7 @@ defmodule Dspy.MultiAgentChat do
   Stop the conversation.
   """
   def stop_conversation(conversation_id) do
-    GenServer.call(via_tuple(conversation_id), :stop)
+    GenServer.call(via_tuple(conversation_id), :stop, 15_000)
   end
 
   @doc """
@@ -275,7 +275,10 @@ defmodule Dspy.MultiAgentChat do
 
   @impl true
   def handle_call(:stop, _from, state) do
-    notify_observers(state, {:conversation_ended, state.conversation_history})
+    # Notify observers with a timeout to prevent hanging
+    Task.start(fn -> 
+      notify_observers(state, {:conversation_ended, state.conversation_history})
+    end)
     {:stop, :normal, :ok, state}
   end
 

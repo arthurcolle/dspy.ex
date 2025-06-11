@@ -107,7 +107,7 @@ defmodule Dspy.SelfConsistency do
         end)
       end)
 
-    results = Task.await_many(tasks, 30_000)
+    results = Task.await_many(tasks, 15_000)
 
     successful_samples =
       results

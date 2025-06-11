@@ -5,7 +5,7 @@ defmodule Dspy.CBLEVisionProcessor do
   """
 
   require Logger
-  alias Dspy.{EnhancedSignature, SequentialVisionSolver}
+  alias Dspy.{EnhancedSignature}
 
   defstruct [
     :ocr_engine,

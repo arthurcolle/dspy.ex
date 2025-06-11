@@ -566,7 +566,7 @@ defmodule Dspy.SequentialVisionSolver do
     Dspy.EnhancedSignature.parse_enhanced_outputs(solver.signature, response)
   end
 
-  defp consolidate_results(solver, step_results) do
+  defp consolidate_results(_solver, step_results) do
     # Combine outputs from all successful steps
     final_outputs =
       step_results
@@ -578,7 +578,7 @@ defmodule Dspy.SequentialVisionSolver do
     {:ok, final_outputs}
   end
 
-  defp evaluate_performance(solver, step_results, final_outputs) do
+  defp evaluate_performance(solver, step_results, _final_outputs) do
     start_time = System.monotonic_time(:millisecond)
 
     # Overall metrics
@@ -797,19 +797,13 @@ defmodule Dspy.SequentialVisionSolver do
       ~r/Finally,(.+?)$/s
     ]
 
-    all_steps = []
-
-    for pattern <- step_patterns do
-      matches = Regex.scan(pattern, response_text)
-
-      for [_, step] <- matches do
-        step = String.trim(step)
-        # Ignore very short matches
-        if String.length(step) > 10 do
-          all_steps = [step | all_steps]
-        end
+    all_steps = 
+      for pattern <- step_patterns,
+          [_, step] <- Regex.scan(pattern, response_text),
+          trimmed_step = String.trim(step),
+          String.length(trimmed_step) > 10 do
+        trimmed_step
       end
-    end
 
     # If no structured steps found, try to split by sentences
     if length(all_steps) == 0 do
@@ -836,15 +830,11 @@ defmodule Dspy.SequentialVisionSolver do
       ~r/(?:^|\s)(\$[^$\n\r]+\$)/
     ]
 
-    all_expressions = []
-
-    for pattern <- expression_patterns do
-      matches = Regex.scan(pattern, text)
-
-      for [_, expr] <- matches do
-        all_expressions = [String.trim(expr) | all_expressions]
+    all_expressions = 
+      for pattern <- expression_patterns,
+          [_, expr] <- Regex.scan(pattern, text) do
+        String.trim(expr)
       end
-    end
 
     Enum.reverse(all_expressions)
   end
@@ -1072,7 +1062,7 @@ defmodule Dspy.SequentialVisionSolver do
     min(1.0, creativity_score)
   end
 
-  defp evaluate_step_performance(solver, step, response, outputs) do
+  defp evaluate_step_performance(solver, step, response, _outputs) do
     # Comprehensive step evaluation
     reasoning_analysis = evaluate_reasoning_quality(solver, response)
 
@@ -1107,7 +1097,7 @@ defmodule Dspy.SequentialVisionSolver do
     end
   end
 
-  defp generate_vision_response(solver, prompt_result) do
+  defp generate_vision_response(_solver, prompt_result) do
     # Handle vision-enabled generation
     if Map.has_key?(prompt_result, :vision_content) and length(prompt_result.vision_content) > 0 do
       # Use vision-capable model

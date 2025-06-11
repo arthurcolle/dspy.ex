@@ -6,7 +6,7 @@ defmodule Dspy.AdvancedCBLEEvalHarness do
 
   require Logger
   alias Dspy.{EnhancedSignature, SequentialVisionSolver, ChainOfThought, SelfConsistency}
-  alias Dspy.{TreeOfThoughts, ProgramOfThoughts}
+  alias Dspy.{TreeOfThoughts}
   alias Dspy.MultiAgentChat
 
   defstruct [

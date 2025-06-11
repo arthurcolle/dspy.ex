@@ -90,6 +90,7 @@ defmodule Dspy.LM do
       {:ok, response} ->
         case get_in(response, [:choices, Access.at(0), :message]) do
           %{"content" => content} when is_binary(content) -> {:ok, content}
+          %{content: content} when is_binary(content) -> {:ok, content}  # Support atom keys
           message -> {:error, {:missing_content, message}}
         end
 

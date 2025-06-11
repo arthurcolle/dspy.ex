@@ -74,7 +74,10 @@ defmodule Dspy.Predict do
   end
 
   defp parse_response(predict, response_text) do
-    outputs = Dspy.Signature.parse_outputs(predict.signature, response_text)
-    {:ok, outputs}
+    case Dspy.Signature.parse_outputs(predict.signature, response_text) do
+      {:error, reason} -> {:error, reason}
+      outputs when is_map(outputs) -> {:ok, outputs}
+      other -> {:error, {:parse_failed, other}}
+    end
   end
 end

@@ -18,8 +18,7 @@ defmodule Dspy.EmbeddedAgent do
     ChainOfThought,
     TreeOfThoughts,
     SelfConsistency,
-    EnhancedSignature,
-    LM
+    EnhancedSignature
   }
   
   defstruct [
@@ -349,7 +348,7 @@ defmodule Dspy.EmbeddedAgent do
     end
   end
   
-  defp create_task_signature(task, description) do
+  defp create_task_signature(_task, description) do
     EnhancedSignature.new("TaskExecution",
       description: description,
       input_fields: [
@@ -508,7 +507,7 @@ defmodule Dspy.EmbeddedAgent do
     Enum.any?(content.topics, &(&1 in state.capabilities))
   end
   
-  defp handle_negotiation(state, message) do
+  defp handle_negotiation(state, _message) do
     # Handle negotiation messages
     state
   end
@@ -627,7 +626,7 @@ defmodule Dspy.EmbeddedAgent do
     end
   end
   
-  defp calculate_average_time(tasks) do
+  defp calculate_average_time(_tasks) do
     # Placeholder - would calculate from actual timing data
     150.0
   end
@@ -640,7 +639,7 @@ defmodule Dspy.EmbeddedAgent do
     |> Enum.frequencies()
   end
   
-  defp identify_successful_patterns(memory) do
+  defp identify_successful_patterns(_memory) do
     # Extract patterns from successful operations
     %{strategies: [:adaptive_reasoning, :context_awareness]}
   end

@@ -27,8 +27,17 @@ defmodule Dspy.MassCollaboration do
       :conflict_resolver,
       :quality_gates,
       :performance_metrics,
-      :coordination_patterns
+      :coordination_patterns,
+      :agents,
+      :collaboration_rounds
     ]
+
+    def new(opts) do
+      %__MODULE__{
+        agents: Keyword.get(opts, :agents, []),
+        collaboration_rounds: Keyword.get(opts, :collaboration_rounds, 1)
+      }
+    end
 
     def start_link(opts) do
       GenStage.start_link(__MODULE__, opts, name: __MODULE__)

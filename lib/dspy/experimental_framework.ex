@@ -2,12 +2,68 @@ defmodule Dspy.ExperimentalFramework do
   @moduledoc """
   Experimental framework for dynamic novel system generation and learning.
 
-  This module orchestrates the entire cycle of:
+  This module orchestrates comprehensive scientific experimentation cycles with:
   1. Novel system generation
   2. System execution and evaluation  
   3. Training data collection
   4. Pattern learning and optimization
   5. Continuous improvement of generation strategies
+
+  ## Scientific Experiment Design
+
+  The framework supports rigorous experimental methodology:
+
+  - **Hypothesis-driven exploration**: Define testable hypotheses about reasoning approaches
+  - **Controlled experimentation**: Systematic parameter variation with control groups
+  - **Statistical significance**: Multiple runs with confidence intervals and p-value analysis
+  - **Reproducibility**: Complete experiment state serialization and deterministic replay
+  - **Meta-analysis**: Cross-experiment pattern detection and learning transfer
+
+  ## Experiment Journal Integration
+
+  Each experiment maintains detailed scientific records:
+
+  - **Research questions**: Clear problem formulation and success criteria
+  - **Methodology**: Detailed experimental design and parameter choices
+  - **Observations**: Real-time data collection and intermediate results
+  - **Analysis**: Statistical analysis and interpretation of results
+  - **Conclusions**: Evidence-based findings and future research directions
+
+  ## Example Usage
+
+      # Define research hypothesis
+      hypothesis = %{
+        question: "Does chain-of-thought improve mathematical reasoning accuracy?",
+        method: "Compare CoT vs direct prediction on math problems",
+        success_metric: "accuracy > 85% with p < 0.05"
+      }
+
+      # Create experiment with journal logging
+      framework = Dspy.ExperimentalFramework.new(MathSignature,
+        experiment_settings: %{
+          hypothesis: hypothesis,
+          control_groups: ["direct", "cot", "tree_of_thoughts"],
+          sample_size: 100,
+          confidence_level: 0.95,
+          journal_enabled: true
+        }
+      )
+
+      # Run systematic experiment
+      {:ok, results} = Dspy.Module.forward(framework, inputs)
+
+      # Access scientific analysis
+      journal = results.attrs.experiment_journal
+      IO.puts(journal.hypothesis_validation.p_value)
+      IO.puts(journal.conclusions.effect_size)
+
+  ## Advanced Capabilities
+
+  - **Adaptive experimental design**: Dynamic parameter adjustment based on interim results
+  - **Multi-objective optimization**: Balance accuracy, efficiency, and novelty
+  - **Cross-validation**: Robust evaluation with stratified sampling
+  - **Ensemble methods**: Combine multiple experimental approaches
+  - **Transfer learning**: Apply insights across different problem domains
   """
 
   use Dspy.Module

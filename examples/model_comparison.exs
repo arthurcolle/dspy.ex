@@ -43,10 +43,17 @@ defmodule ModelComparison do
       IO.puts("\n=== Testing #{model} ===")
       IO.puts(description)
       
-      # Configure the model
+      # Configure the model with appropriate timeout
+      timeout = case model do
+        "gpt-4.1" -> 180_000       # 3 minutes for complex reasoning
+        "gpt-4.1-mini" -> 120_000  # 2 minutes
+        "gpt-4.1-nano" -> 90_000   # 1.5 minutes
+      end
+      
       Dspy.configure(lm: %Dspy.LM.OpenAI{
         model: model,
-        api_key: System.get_env("OPENAI_API_KEY")
+        api_key: System.get_env("OPENAI_API_KEY"),
+        timeout: timeout
       })
       
       # Test complex reasoning (gpt-4.1 excels here)

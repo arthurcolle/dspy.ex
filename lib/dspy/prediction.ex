@@ -103,6 +103,32 @@ defmodule Dspy.Prediction do
     prediction.completions
   end
 
+  @behaviour Access
+
+  @impl Access
+  def fetch(prediction, key) do
+    case Map.fetch(prediction.attrs, key) do
+      {:ok, value} -> {:ok, value}
+      :error -> :error
+    end
+  end
+  
+  @impl Access
+  def get_and_update(prediction, key, function) do
+    current_value = get(prediction, key)
+    {get_value, new_value} = function.(current_value)
+    new_prediction = put(prediction, key, new_value)
+    {get_value, new_prediction}
+  end
+  
+  @impl Access
+  def pop(prediction, key) do
+    current_value = get(prediction, key)
+    new_prediction = delete(prediction, key)
+    {current_value, new_prediction}
+  end
+
   defp normalize_attrs(attrs) when is_list(attrs), do: Enum.into(attrs, %{})
   defp normalize_attrs(attrs) when is_map(attrs), do: attrs
+  defp normalize_attrs(_attrs), do: %{}
 end

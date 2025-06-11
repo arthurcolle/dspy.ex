@@ -1,24 +1,34 @@
 # Basic DSPy Usage Examples with GPT-4.1 Models
 
+# Load dependencies
+Mix.install([
+  {:dspy, path: Path.expand("..", __DIR__)},
+  {:jason, "~> 1.2"},
+  {:gen_stage, "~> 1.2"}
+])
+
+# Start the application
+Application.ensure_all_started(:dspy)
+
 # Configure with different GPT-4.1 variants based on your needs
 
 # GPT-4.1 - Most capable, highest cost
-Dspy.configure(lm: %Dspy.LM.OpenAI{
+Dspy.configure(lm: Dspy.LM.OpenAI.new(
   model: "gpt-4.1",
   api_key: System.get_env("OPENAI_API_KEY")
-})
+))
 
 # GPT-4.1-mini - Balanced performance and cost
-# Dspy.configure(lm: %Dspy.LM.OpenAI{
+# Dspy.configure(lm: Dspy.LM.OpenAI.new(
 #   model: "gpt-4.1-mini",
 #   api_key: System.get_env("OPENAI_API_KEY")
-# })
+# ))
 
 # GPT-4.1-nano - Fastest, most economical
-# Dspy.configure(lm: %Dspy.LM.OpenAI{
+# Dspy.configure(lm: Dspy.LM.OpenAI.new(
 #   model: "gpt-4.1-nano", 
 #   api_key: System.get_env("OPENAI_API_KEY")
-# })
+# ))
 
 # Define a simple Q&A signature
 defmodule BasicQA do
