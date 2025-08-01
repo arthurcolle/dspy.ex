@@ -6,9 +6,22 @@ defmodule Dspy.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      # Phoenix PubSub
+      {Phoenix.PubSub, name: Dspy.PubSub},
+      
+      # DSPy Core Services
       {Dspy.Settings, []},
       {Registry, keys: :unique, name: Dspy.MultiAgentChat.Registry},
       {Dspy.MultiAgentLogger, []},
+      
+      # Godmode Services
+      {Dspy.GodmodeCoordinator, []},
+      {Dspy.RealtimeMonitor, []},
+      
+      # Phoenix Endpoint
+      DspyWeb.Endpoint,
+      
+      # LM Configuration Task
       {Task, fn -> configure_language_model() end}
     ]
 
@@ -20,6 +33,14 @@ defmodule Dspy.Application do
     configure_language_model()
     
     {:ok, pid}
+  end
+  
+  # Tell Phoenix to update the endpoint configuration
+  # whenever the application is updated.
+  @impl true
+  def config_change(changed, _new, removed) do
+    DspyWeb.Endpoint.config_change(changed, removed)
+    :ok
   end
   
   defp configure_language_model do

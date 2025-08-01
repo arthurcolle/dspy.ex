@@ -21,3 +21,5 @@ dspy-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+python_dspy_source/

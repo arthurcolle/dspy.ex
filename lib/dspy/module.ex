@@ -27,6 +27,18 @@ defmodule Dspy.Module do
 
   @optional_callbacks [parameters: 1, update_parameters: 2]
 
+  defmacro __using__(_opts) do
+    quote do
+      @behaviour Dspy.Module
+      
+      def forward(module, inputs) do
+        __MODULE__.forward(module, inputs)
+      end
+      
+      defoverridable forward: 2
+    end
+  end
+
   @doc """
   Execute a module's forward pass.
   """
@@ -101,15 +113,4 @@ defmodule Dspy.Module do
     end
   end
 
-  defmacro __using__(_opts) do
-    quote do
-      @behaviour Dspy.Module
-
-      def forward(_module, _inputs), do: {:error, :not_implemented}
-      def parameters(_module), do: []
-      def update_parameters(module, _parameters), do: module
-
-      defoverridable forward: 2, parameters: 1, update_parameters: 2
-    end
-  end
 end

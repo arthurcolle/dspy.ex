@@ -452,7 +452,7 @@ defmodule Dspy.AdvancedMetaProgramming do
   defp extract_module_name(ast) do
     case ast do
       {:defmodule, _, [{:__aliases__, _, name_parts}, _]} ->
-        Module.concat(name_parts)
+        Elixir.Module.concat(name_parts)
       _ ->
         nil
     end

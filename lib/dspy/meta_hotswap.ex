@@ -136,7 +136,7 @@ defmodule Dspy.MetaHotswap do
       backup = backup_existing_module(module_name)
       
       # Compile new module
-      {module_atom, _bytecode} = Code.compile_string(new_code)
+      [{module_atom, _bytecode}] = Code.compile_string(new_code)
       
       # Update state
       new_state = %{
@@ -266,7 +266,7 @@ defmodule Dspy.MetaHotswap do
   # Private helper functions
 
   defp backup_existing_module(module_name) do
-    module_atom = String.to_existing_atom("Elixir.#{module_name}")
+    module_atom = String.to_atom("Elixir.#{module_name}")
     
     case Code.ensure_loaded(module_atom) do
       {:module, _} ->

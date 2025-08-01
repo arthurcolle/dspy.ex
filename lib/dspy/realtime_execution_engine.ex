@@ -38,7 +38,7 @@ defmodule Dspy.RealtimeExecutionEngine do
   use GenServer
   require Logger
   
-  alias Dspy.{Example, Prediction, Module, Settings}
+  alias Dspy.{Example, Prediction}
   
   @type execution_config :: %{
     examples: [Example.t()],
@@ -511,9 +511,10 @@ defmodule Dspy.RealtimeExecutionEngine do
     end
   end
   
-  defp create_signature_from_example(example) do
-    # Create a simple Q&A signature for examples
-    Dspy.Signature.question_answer()
+  
+  defp create_signature_from_example(_example) do
+    # Create a basic question-answer signature for the example
+    Dspy.Signature.get_predefined(:question_answer)
   end
   
   defp extract_inputs_from_example(example) do

@@ -490,10 +490,6 @@ defmodule Dspy.ParallelMultiModelAgent do
     )
   end
 
-  defp create_anthropic_client(model) do
-    # Placeholder for Anthropic client - would need actual implementation
-    %{type: :anthropic, model: model, api_key: System.get_env("ANTHROPIC_API_KEY")}
-  end
 
   defp prepare_task(task_spec, _state) do
     %{

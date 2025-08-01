@@ -471,33 +471,6 @@ defmodule Dspy.AdvancedCBLEEvalHarness do
     {:retry, Map.put(context, :questions, sub_questions)}
   end
 
-  # Advanced caching system
-  defp check_cache(harness, key) do
-    case harness.cache_manager.get(key) do
-      {:ok, value, metadata} ->
-        if is_cache_valid?(metadata) do
-          harness.cache_manager.update_stats(:hit, key)
-          {:ok, value}
-        else
-          harness.cache_manager.update_stats(:stale, key)
-          :miss
-        end
-
-      :miss ->
-        harness.cache_manager.update_stats(:miss, key)
-        :miss
-    end
-  end
-
-  defp cache_result(harness, key, value, ttl \\ 3600) do
-    metadata = %{
-      cached_at: DateTime.utc_now(),
-      ttl: ttl,
-      access_count: 0
-    }
-
-    harness.cache_manager.put(key, value, metadata)
-  end
 
   # Helper functions for advanced features
   defp create_nlp_analysis_signature do
@@ -743,14 +716,6 @@ defmodule Dspy.AdvancedCBLEEvalHarness do
 
   # Missing function implementations
 
-  defp is_cache_valid?(metadata) do
-    # Check if cache entry is still valid based on TTL
-    now = DateTime.utc_now()
-    cached_at = metadata.cached_at
-    ttl = metadata.ttl || 3600
-
-    DateTime.diff(now, cached_at) < ttl
-  end
 
   defp create_vision_specialist(harness) do
     %{
@@ -950,20 +915,6 @@ defmodule Dspy.AdvancedCBLEEvalHarness do
     )
   end
 
-  defp create_program_signature(question) do
-    # Create signature for program of thoughts
-    EnhancedSignature.new("ProgramReasoning",
-      description: "Solve using program of thoughts: #{question.text}",
-      input_fields: [
-        %{name: :question, type: :string, required: true},
-        %{name: :context, type: :string, required: false}
-      ],
-      output_fields: [
-        %{name: :program, type: :string, required: true},
-        %{name: :result, type: :string, required: true}
-      ]
-    )
-  end
 
   defp create_tree_signature(question) do
     # Create signature for tree of thoughts

@@ -35,7 +35,6 @@ defmodule Dspy.RealtimeMonitor do
   use GenServer
   require Logger
   
-  alias Dspy.{RealtimeStore, RealtimeExecutionEngine}
   
   @type monitor_config :: %{
     alert_thresholds: map(),
@@ -94,16 +93,6 @@ defmodule Dspy.RealtimeMonitor do
     dashboard_update_interval_ms: 5_000
   }
   
-  @alert_types [
-    :high_error_rate,
-    :high_latency,
-    :low_throughput,
-    :memory_exhaustion,
-    :cpu_overload,
-    :system_failure,
-    :performance_regression,
-    :anomaly_detected
-  ]
   
   @dashboard_widget_types [
     :performance_metrics,
@@ -236,8 +225,10 @@ defmodule Dspy.RealtimeMonitor do
     # Start monitoring loops
     state = schedule_monitoring(state)
     
-    if config.dashboard_enabled do
-      state = schedule_dashboard_update(state)
+    state = if config.dashboard_enabled do
+      schedule_dashboard_update(state)
+    else
+      state
     end
     
     Logger.info("Realtime monitor started with config: #{inspect(config)}")
